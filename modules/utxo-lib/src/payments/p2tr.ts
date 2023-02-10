@@ -4,6 +4,8 @@
 import { networks } from '../networks';
 import { script as bscript, Payment, PaymentOpts, lazy } from 'bitcoinjs-lib';
 import * as taproot from '../taproot';
+import { musig } from '../noble_crypto';
+import * as necc from '@noble/secp256k1';
 const typef = require('typeforce');
 const OPS = bscript.OPS;
 
@@ -17,6 +19,19 @@ const BITCOIN_NETWORK = networks.bitcoin;
  */
 const H = Buffer.from('50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0', 'hex');
 const EMPTY_BUFFER = Buffer.alloc(0);
+
+function isOrdinaryPubkey(pubKey: Uint8Array): boolean {
+  if (pubKey.length !== 33) return false;
+  try {
+    return !!necc.Point.fromHex(pubKey);
+  } catch (e) {
+    return false;
+  }
+}
+
+function isOrdinaryPubkeys(pubkeys: Buffer[]) {
+  return pubkeys.every(isOrdinaryPubkey);
+}
 
 // output: OP_1 {witnessProgram}
 export function p2tr(a: Payment, opts?: PaymentOpts): Payment {
@@ -41,7 +56,7 @@ export function p2tr(a: Payment, opts?: PaymentOpts): Payment {
       pubkey: typef.maybe(ecc.isXOnlyPoint),
       // the pub key(s) used for keypath signing.
       // aggregated with MuSig2* if > 1
-      pubkeys: typef.maybe(typef.arrayOf(ecc.isXOnlyPoint)),
+      pubkeys: typef.maybe(typef.arrayOf(typef.anyOf(ecc.isXOnlyPoint, isOrdinaryPubkey))),
 
       redeems: typef.maybe(
         typef.arrayOf({
@@ -116,6 +131,10 @@ export function p2tr(a: Payment, opts?: PaymentOpts): Payment {
       return a.pubkeys[0];
     } else if (a.pubkeys && a.pubkeys.length > 1) {
       // multiple pubkeys
+      if (isOrdinaryPubkeys(a.pubkeys)) {
+        return musig.getXOnlyPubkey(musig.keyAgg(a.pubkeys));
+      }
+
       return Buffer.from(taproot.aggregateMuSigPubkeys(ecc, a.pubkeys));
     } else if (_parsedControlBlock()) {
       return _parsedControlBlock()?.internalPubkey;

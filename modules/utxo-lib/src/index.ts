@@ -14,6 +14,8 @@ export * from './noble_ecc';
 
 export * as p2trPayments from './payments';
 
+export * from './noble_crypto';
+
 export {
   networks,
   Network,
