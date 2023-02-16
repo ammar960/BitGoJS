@@ -106,6 +106,12 @@ describe('CoinMap', function () {
       assetIds.add(coin.id);
     });
   });
+
+  it('should get coin by id', () => {
+    const btc = coins.get('btc');
+    const btcById = coins.get(btc.id);
+    btcById.should.deepEqual(btc);
+  });
 });
 
 coins.forEach((coin, coinName) => {
