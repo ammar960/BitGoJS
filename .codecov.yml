@@ -18,3 +18,12 @@ flags:
   express:
     paths:
       - modules/express
+exoress:
+paths:
+-modules/express
+statics:
+paths:
+-modules/statics
+bitgo:
+paths:
+modules/bitgo
